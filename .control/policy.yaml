@@ -1,0 +1,57 @@
+# Wealth Management — Control Policy
+# Setpoints and gates for investment strategy governance
+
+setpoints:
+  rebalancing:
+    drift_threshold_pct: 5.0       # Trigger rebalance when allocation drifts >5%
+    min_rebalance_interval_days: 90 # Don't rebalance more than quarterly
+    tax_impact_cap_cop: 5000000    # Max acceptable tax impact per rebalance event
+
+  contributions:
+    afc_annual_cap_uvt: 3800       # AFC + vol pension combined cap (Art. 126-1 ET)
+    global_deduction_cap_uvt: 1340 # Total exentas + deducciones cap (Art. 336)
+    emergency_fund_months: 6      # Minimum months of expenses in liquid assets
+    max_single_position_pct: 25   # Concentration risk limit
+
+  projections:
+    default_horizon_years: 20
+    inflation_cop_default: 5.5
+    inflation_usd_default: 2.5
+    safe_withdrawal_rate: 4.0     # % annual withdrawal for distribution phase
+    tax_drag_pct: 2.0             # Estimated annual tax on investment returns
+
+  risk_profiles:
+    conservative:
+      equities: 30
+      fixed_income: 50
+      real_estate: 10
+      cash_afc: 10
+      expected_real_return: 3.0
+    moderate:
+      equities: 55
+      fixed_income: 25
+      real_estate: 10
+      cash_afc: 10
+      expected_real_return: 5.0
+    aggressive:
+      equities: 75
+      fixed_income: 10
+      real_estate: 10
+      cash_afc: 5
+      expected_real_return: 7.0
+
+gates:
+  - name: large-rebalance
+    description: "Rebalance involving >$50M COP requires user confirmation"
+    trigger: "rebalance_amount_cop > 50000000"
+    action: confirm
+
+  - name: concentration-warning
+    description: "Any single position exceeding 25% of portfolio"
+    trigger: "position_pct > max_single_position_pct"
+    action: warn
+
+  - name: emergency-fund-check
+    description: "Block aggressive allocation if emergency fund insufficient"
+    trigger: "liquid_months < emergency_fund_months AND risk_profile == aggressive"
+    action: block
