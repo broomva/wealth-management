@@ -296,6 +296,11 @@ salary = load_jsonl("~/.finance-substrate/tax/salary-history.jsonl")
 | AFC (Davivienda) | 1% | 2% | 2% |
 | Cash/savings | 0% | 0% | 0% |
 
+## Related Skills
+
+- **[finance-substrate](https://github.com/broomva/finance-substrate)** — Data layer: bank certificates, patrimonio, tax projection, salary history, TRM rates
+- **[investment-management](https://github.com/broomva/investment-management)** — Execution layer: security screening, scoring, market data, trade execution, factor analysis, backtesting
+
 ## Dependencies
 
 - Python 3.10+
