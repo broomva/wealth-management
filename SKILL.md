@@ -296,15 +296,76 @@ salary = load_jsonl("~/.finance-substrate/tax/salary-history.jsonl")
 | AFC (Davivienda) | 1% | 2% | 2% |
 | Cash/savings | 0% | 0% | 0% |
 
+## Compound: Autoany Integration (EGRI)
+
+This skill is EGRI-aware. When a user's request implies iterative optimization
+of savings strategies, contribution plans, or investment horizons, the agent
+should scaffold a problem-spec and delegate to `/autoany`.
+
+### Optimization Triggers
+
+Invoke `/autoany` when the user asks to:
+- **"Optimize contributions"** — AFC vs pension vs brokerage split
+- **"Maximize probability"** — probability of reaching a financial goal
+- **"Best allocation for my goals"** — multi-horizon allocation
+- **"How should I split my savings"** — tax-efficient contribution ordering
+- **"Run simulations"** — with optimization intent (not just a single run)
+- **"Stress test my plan"** — combined with finding a better plan
+
+### EGRI Problem-Spec Templates
+
+| Template | Artifact | Evaluator | Score | Use When |
+|----------|----------|-----------|-------|----------|
+| `contribution-optimization` | `contribution_plan.yaml` | `scenario_analysis.py --egri` | P(goal) | Optimizing savings splits |
+| `horizon-evaluation` | `horizon_plan.yaml` | `eval_horizon.py --egri` | Risk-adjusted P(all goals) | Multi-goal allocation |
+
+Templates are at `templates/egri/`.
+
+### Delegation Flow
+
+```
+1. User request → agent detects optimization intent
+2. Load personal context:
+   - patrimonio from finance-substrate (starting capital)
+   - salary trajectory (budget constraint)
+   - TRM rates (COP/USD conversion)
+   - existing goals from ~/.wealth-management/goals.json
+3. Scaffold problem-spec from template
+4. Invoke /autoany
+5. EGRI loop: Proposer → Executor (scenario_analysis.py) → Evaluator → Selector
+6. Return promoted plan + ledger summary
+7. Show concrete action items:
+   - "Increase AFC contributions to $X/month"
+   - "Shift 10% from fixed income to equities in retirement bucket"
+```
+
+### EGRI Evaluator Bridge
+
+`scenario_analysis.py --egri` outputs structured `Outcome` for autoany:
+- Score: `probability_of_goal_pct` (0-100)
+- Constraints: `median_max_drawdown_pct > -25`, `probability_of_ruin_pct <= 5`
+- Metrics: full Monte Carlo statistics for the proposer to learn from
+
+### Safety Constraints (enforced in EGRI loops)
+
+- All simulations use **historical/synthetic data only** (no live data risk)
+- Contribution plans are **advisory** — no automatic financial actions
+- AFC + pensión voluntaria combined cap: 1,340 UVT (~$66.7M COP)
+- Monthly contribution cannot exceed income
+- Ruin probability must stay below 5%
+- Budget: 20-40 trials max, 10-40 minutes total
+
 ## Related Skills
 
 - **[finance-substrate](https://github.com/broomva/finance-substrate)** — Data layer: bank certificates, patrimonio, tax projection, salary history, TRM rates
 - **[investment-management](https://github.com/broomva/investment-management)** — Execution layer: security screening, scoring, market data, trade execution, factor analysis, backtesting
+- **[autoany](https://github.com/broomva/autoany)** — EGRI framework for recursive improvement loops
 
 ## Dependencies
 
 - Python 3.10+
 - `finance-substrate` skill (data layer — certificates, patrimonio, tax, salary)
+- `autoany` (optional, for EGRI optimization loops)
 - `numpy` (optional, for Monte Carlo simulations)
 - No paid services. All data stays local.
 
@@ -326,6 +387,10 @@ wealth-management/
 │   ├── compounding-formulas.md       # Mathematical foundations
 │   ├── colombian-investment-landscape.md  # Local market reference
 │   └── tax-efficiency-strategies.md  # Withdrawal ordering, harvesting
+├── templates/
+│   └── egri/                         # EGRI problem-spec templates (autoany)
+│       ├── contribution-optimization.yaml  # Savings split optimization
+│       └── horizon-evaluation.yaml         # Multi-goal horizon allocation
 ├── .control/
 │   └── policy.yaml                   # Rebalancing thresholds, contribution caps
 └── README.md
